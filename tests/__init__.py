@@ -1,0 +1,1 @@
+# CosArt tests package
