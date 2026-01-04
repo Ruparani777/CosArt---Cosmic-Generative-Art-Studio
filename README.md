@@ -76,7 +76,7 @@ CosArt is a groundbreaking generative art platform that transforms complex GAN t
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/cosart.git
+git clone https://github.com/Ruparani777/CosArt---Cosmic-Generative-Art-Studio.git
 cd cosart
 
 # Create virtual environment
@@ -98,7 +98,7 @@ uvicorn api.main:app --reload
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/cosart.git
+git clone https://github.com/Ruparani777/CosArt---Cosmic-Generative-Art-Studio.git
 cd cosart
 
 # Build and run
@@ -577,10 +577,9 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## 📞 Contact & Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/cosart/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/cosart/discussions)
-- **Email**: cosart@example.com
-- **Twitter**: [@CosArtPlatform](https://twitter.com/CosArtPlatform)
+- **Issues**: [GitHub Issues](https://github.com/Ruparani777/CosArt---Cosmic-Generative-Art-Studio.git/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Ruparani777/CosArt---Cosmic-Generative-Art-Studio.git/discussions)
+- **Email**: thupakularuparani17@gmail.com
 
 ---
 
