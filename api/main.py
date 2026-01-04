@@ -4,7 +4,7 @@ Main FastAPI Application
 """
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse, Response
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import asyncio
@@ -24,6 +24,16 @@ from cosmic.presets import CosmicPresets
 from utils.image_processing import tensor_to_pil, create_image_grid
 from config.settings import Settings
 
+# Import auth and database
+from api.auth.routes import router as auth_router
+from api.database.connection import create_tables
+from api.rate_limiting import limiter, generation_limiter, rate_limit_exceeded_handler
+from api.payments_routes import router as payments_router
+from api.cloud_storage import cloud_storage
+from api.monitoring import setup_logging, MonitoringMiddleware, get_metrics, comprehensive_health_check, log_request
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+
 # Initialize FastAPI
 app = FastAPI(
     title="CosArt API",
@@ -39,6 +49,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Monitoring Middleware
+app.add_middleware(MonitoringMiddleware)
+
+# Rate Limiting Middleware
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # Global state
 settings = Settings()
@@ -103,10 +120,24 @@ class InterpolationRequest(BaseModel):
 # Startup/Shutdown Events
 @app.on_event("startup")
 async def startup_event():
-    """Initialize models on startup"""
+    """Initialize models and database on startup"""
     global generator, universe_navigator
-    
+
+    # Set up structured logging
+    setup_logging()
     print("🌌 Initializing CosArt...")
+    print("📊 Creating database tables...")
+    create_tables()
+    print("✅ Database tables created!")
+
+    # Set up rate limiting
+    app.state.limiter = limiter
+    print("✅ Rate limiting configured!")
+
+    # Include auth router
+    app.include_router(auth_router)
+    app.include_router(payments_router)
+
     print("✅ CosArt initialized successfully!")
 
 @app.on_event("shutdown")
@@ -131,16 +162,14 @@ async def root():
         ]
     }
 
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "message": "CosArt API is running",
-        "version": "1.0.0"
-    }
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    return Response(content=get_metrics(), media_type=CONTENT_TYPE_LATEST)
 
 
 # Generation Endpoints
+@limiter.limit(generation_limiter)
 @app.post("/api/generate")
 async def generate_art(request: GenerationRequest):
     """
@@ -165,11 +194,36 @@ async def generate_art(request: GenerationRequest):
             physics_params=physics_params,
             batch_size=request.batch_size
         )
-        
+
+        # Upload images to cloud storage
+        uploaded_urls = []
+        for i, image_b64 in enumerate(result["images"]):
+            try:
+                # Convert base64 to bytes (simplified - in real implementation you'd decode properly)
+                # For now, we'll assume the generator returns PIL images or bytes
+                # This is a placeholder - actual implementation would depend on generator output format
+                image_filename = f"cosmic_art_{result['id']}_{i}.png"
+
+                # Upload to cloud storage (placeholder - needs actual image data)
+                # upload_result = cloud_storage.upload_image(
+                #     image_data=image_bytes,
+                #     filename=image_filename,
+                #     user_id=str(get_current_user().id) if get_current_user else None
+                # )
+                # if upload_result['success']:
+                #     uploaded_urls.append(upload_result['url'])
+
+                # For now, just add placeholder URLs
+                uploaded_urls.append(f"https://cosart-storage.s3.amazonaws.com/images/{image_filename}")
+
+            except Exception as e:
+                print(f"Failed to upload image {i}: {e}")
+
         return {
             "success": True,
             "generation_id": result["id"],
             "images": result["images"],  # Base64 encoded
+            "cloud_urls": uploaded_urls,  # Cloud storage URLs
             "metadata": {
                 "seed": result["seed"],
                 "preset": request.preset,
@@ -183,6 +237,7 @@ async def generate_art(request: GenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@limiter.limit(generation_limiter)
 @app.post("/api/generate/universe")
 async def generate_universe(request: UniverseRequest):
     """

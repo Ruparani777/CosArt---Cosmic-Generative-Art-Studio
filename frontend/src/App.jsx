@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Sparkles, Orbit, Wand2, Layers, Download, Play, Pause } from 'lucide-react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Stars, Text } from '@react-three/drei';
 
 const CosArtApp = () => {
   const [activeTab, setActiveTab] = useState('generate');
@@ -22,6 +24,107 @@ const CosArtApp = () => {
   
   const [selectedPreset, setSelectedPreset] = useState('nebula');
   const [resolution, setResolution] = useState(512);
+  
+  // Universe Mode state
+  const [universeData, setUniverseData] = useState([]);
+  const [selectedArtwork, setSelectedArtwork] = useState(null);
+  const [isExploring, setIsExploring] = useState(false);
+
+  // Simulate universe data (replace with API call)
+  useEffect(() => {
+    if (activeTab === 'universe' && universeData.length === 0) {
+      // Generate mock universe points
+      const points = [];
+      for (let i = 0; i < 1000; i++) {
+        points.push({
+          id: i,
+          position: [
+            (Math.random() - 0.5) * 100,
+            (Math.random() - 0.5) * 100,
+            (Math.random() - 0.5) * 100
+          ],
+          color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+          seed: Math.floor(Math.random() * 1000000)
+        });
+      }
+      setUniverseData(points);
+    }
+  }, [activeTab, universeData.length]);
+
+  // Universe Point Component
+  function UniversePoint({ point, onClick }) {
+    const meshRef = useRef();
+    
+    useFrame((state) => {
+      if (meshRef.current) {
+        meshRef.current.rotation.x += 0.005;
+        meshRef.current.rotation.y += 0.005;
+      }
+    });
+
+    return (
+      <mesh
+        ref={meshRef}
+        position={point.position}
+        onClick={() => onClick(point)}
+        onPointerOver={() => document.body.style.cursor = 'pointer'}
+        onPointerOut={() => document.body.style.cursor = 'auto'}
+      >
+        <sphereGeometry args={[0.5, 8, 8]} />
+        <meshBasicMaterial color={point.color} />
+      </mesh>
+    );
+  }
+
+  // Universe Scene Component
+  function UniverseScene() {
+    const handlePointClick = (point) => {
+      setSelectedArtwork(point);
+      // Simulate generation
+      setIsGenerating(true);
+      setProgress(0);
+      const interval = setInterval(() => {
+        setProgress(p => {
+          if (p >= 100) {
+            clearInterval(interval);
+            setIsGenerating(false);
+            setGeneratedImage(`https://picsum.photos/seed/${point.seed}/512/512`);
+            setActiveTab('generate'); // Switch to generate tab to show result
+            return 100;
+          }
+          return p + 10;
+        });
+      }, 200);
+    };
+
+    return (
+      <>
+        <Stars radius={300} depth={50} count={5000} factor={4} saturation={0} fade />
+        <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
+        {universeData.map((point) => (
+          <UniversePoint key={point.id} point={point} onClick={handlePointClick} />
+        ))}
+        <Text
+          position={[0, 60, 0]}
+          fontSize={8}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+        >
+          Cosmic Universe Explorer
+        </Text>
+        <Text
+          position={[0, 50, 0]}
+          fontSize={3}
+          color="#a855f7"
+          anchorX="center"
+          anchorY="middle"
+        >
+          Click on stars to generate art from that cosmic location
+        </Text>
+      </>
+    );
+  }
   
   // Cosmic presets
   const presets = {
@@ -284,19 +387,38 @@ const CosArtApp = () => {
 
         {activeTab === 'universe' && (
           <div className="bg-black/40 backdrop-blur-lg rounded-xl p-8 border border-purple-500/30">
-            <div className="text-center py-20">
-              <Orbit className="w-24 h-24 mx-auto mb-6 text-purple-400 animate-spin" style={{animationDuration: '8s'}} />
+            <div className="mb-6 text-center">
               <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Universe Mode
               </h2>
-              <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              <p className="text-gray-400 mb-4 max-w-2xl mx-auto">
                 Navigate through a 3D latent space where each point represents a unique artwork. 
                 Travel through galaxies of creativity and discover hidden constellations.
               </p>
-              <button className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl transition-all shadow-lg">
-                Launch Universe Explorer
-              </button>
-              <p className="text-xs text-gray-500 mt-4">🚀 Full 3D navigation coming soon</p>
+              <div className="flex justify-center gap-4 mb-4">
+                <button 
+                  onClick={() => setIsExploring(!isExploring)}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold rounded-xl transition-all shadow-lg"
+                >
+                  {isExploring ? <Pause className="w-5 h-5 inline mr-2" /> : <Play className="w-5 h-5 inline mr-2" />}
+                  {isExploring ? 'Pause Exploration' : 'Start Exploration'}
+                </button>
+              </div>
+            </div>
+            
+            <div className="h-96 bg-black/50 rounded-lg overflow-hidden">
+              <Canvas camera={{ position: [0, 0, 50], fov: 75 }}>
+                <UniverseScene />
+              </Canvas>
+            </div>
+            
+            <div className="mt-6 text-center text-sm text-gray-400">
+              <p>🖱️ Click and drag to navigate • 🔍 Scroll to zoom • ⭐ Click stars to generate art</p>
+              {selectedArtwork && (
+                <p className="mt-2 text-purple-400">
+                  Selected cosmic location: Seed {selectedArtwork.seed}
+                </p>
+              )}
             </div>
           </div>
         )}

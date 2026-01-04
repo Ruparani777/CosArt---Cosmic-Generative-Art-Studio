@@ -48,12 +48,27 @@ class Settings:
     # Cosmic Features
     ENABLE_UNIVERSE_MODE: bool = True
     ENABLE_PHYSICS_CONTROLS: bool = True
+
+    # Database Settings
+    DATABASE_URL: Optional[str] = None  # Will use SQLite for development if not set
+
+    # Authentication Settings
+    SECRET_KEY: str = "your-secret-key-change-in-production-please"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    # Email Settings (for future use)
+    SMTP_SERVER: Optional[str] = None
+    SMTP_PORT: Optional[int] = None
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+
+    # Debug Settings
+    DEBUG: bool = True
     ENABLE_CUSTOM_TRAINING: bool = False
 
     # External Services
     CLOUD_STORAGE_BUCKET: str = "cosart-models"
     REDIS_URL: str = "redis://localhost:6379"
-    DATABASE_URL: str = "postgresql://localhost/cosart"
 
     # Monitoring
     LOG_LEVEL: str = "INFO"
